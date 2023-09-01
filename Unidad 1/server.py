@@ -3,6 +3,7 @@ import json
 
 contador = 11
 
+
 class MyHTTPRequestHandler(BaseHTTPRequestHandler):
     def _set_response(self, content_type="text/plain"):
         self.send_response(200)
@@ -21,12 +22,16 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
         body_json = json.loads(post_data.decode())
         print(body_json['action'])
 
+        body_json = json.loads(post_data.decode())
+        print(body_json['plus'])
+
         global contador
 
         if(body_json['action'] == 'asc'):
-            contador +=1
+            contador += body_json['plus']
         elif(body_json['action'] == 'desc' ):
-            contador -=1
+            contador -=body_json['plus']
+        
 
         # Print the complete HTTP request
         print("\n----- Incoming POST Request -----")
