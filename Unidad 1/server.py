@@ -41,7 +41,8 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
         print("-------------------------------")
 
         # Respond to the client
-        response_data = json.dumps({"message": "Received POST data", "data": post_data.decode(), "status": "Ok"})
+        response_data = json.dumps({"message": "Received POST data", "data":
+         post_data.decode(), "status": "Ok"})
         self._set_response("application/json")
         self.wfile.write(response_data.encode())
 
