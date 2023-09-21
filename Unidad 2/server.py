@@ -4,7 +4,9 @@ import os
 
 contador = 11
 led = False
-temperature = 0.0
+temperature = 15.6
+humidity = 20.1
+
 
 class MyHTTPRequestHandler(BaseHTTPRequestHandler):
 
@@ -18,14 +20,14 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
     self.wfile.write(json.dumps({"message": message}).encode())
 
   def do_GET(self):
-    global led
     # Set the response headers
     print(self.path)
+    global led
     if self.path == "/":
       try:
         # Get the absolute path to the HTML file
         self._set_response(content_type="text/html")
-        html_file_path = os.path.abspath("Unidad 2/index.html")
+        html_file_path = os.path.abspath("Unidad 2/EncenderLed.html")
         with open(html_file_path, "r", encoding="utf-8") as file_to_open:
           # Write the HTML content to the response
           self.wfile.write(file_to_open.read().encode())
@@ -35,6 +37,7 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
     elif self.path == "/counter":
       self._set_response()
       self.wfile.write(json.dumps({"contador": contador}).encode())
+
     elif self.path == "/led":
       self._set_response()
       self.wfile.write(json.dumps({"status": led}).encode())
@@ -43,19 +46,23 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
       led = True
       self._set_response()
       self.wfile.write(json.dumps({"status": led}).encode())
-      # send bad request response
-      self.throw_custom_error("Invalid path")
-    
+
     elif self.path == "/led/off":
       led = False
       self._set_response()
       self.wfile.write(json.dumps({"status": led}).encode())
-      # send bad request response
-      self.throw_custom_error("Invalid path")
-    
+
     elif self.path == "/temperature":
       self._set_response()
-      self.wfile.write(json.dumps({"Temperatura": temperature}).encode())
+      self.wfile.write(json.dumps({"temperature": temperature}).encode())
+
+    elif self.path == "/humidity":
+      self._set_response()
+      self.wfile.write(json.dumps({"humidity": humidity}).encode())
+
+    else:
+      # send bad request response
+      self.throw_custom_error("Invalid path")
 
   def do_POST(self):
     content_length = int(self.headers["Content-Length"])
@@ -66,22 +73,52 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
     except:
       self.throw_custom_error("Invalid JSON")
       return
-
-    #Check  if path is /temperature 
+    
+    # check if path is /temperature
     if (self.path == "/temperature"):
-      if(body_json.get('temperature') is None):
+      if (body_json.get('temperature') is None):
         self.throw_custom_error("Missing temperature")
         return
+      
+      # Check is temperature is valid, float
+      try:
+        float(body_json['temperature'])
+      except:
+        self.throw_custom_error("Invalid temperature")
+        return
 
-    #Check if temperature is valid, float
-    try:
-      float(body_json['temperature'])
-    except:
-      self.throw_custom_error("Invalid temperature")
+      global temperature
+      temperature = float(body_json['temperature'])
+
+      #Respond to the client
+      response_data = json.dumps({"message": "Received POST data, new temperature " + str(temperature), "status": "OK"})
+
+      self._set_response("application/json")
+      self.wfile.write(response_data.encode())
       return
     
-    global temperature
-    temperature = float(body_json['temperature'])
+    # Check if path is /humidity
+    if (self.path == "/humidity"):
+      if (body_json.get('humidity') is None):
+        self.throw_custom_error("Missing humidity")
+        return
+      
+      # Check is humidity is valid, float
+      try:
+        float(body_json['humidity'])
+      except:
+        self.throw_custom_error("Invalid humidity")
+        return
+      
+      global humidity
+      humidity = float(body_json['humidity'])
+
+      #Respond to the client
+      response_data = json.dumps({"message": "Received POST data, new humidity " + str(humidity), "status": "OK"})
+
+      self._set_response("application/json")
+      self.wfile.write(response_data.encode())
+      return
 
     global contador
 
