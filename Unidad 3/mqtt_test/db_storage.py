@@ -1,5 +1,6 @@
 import sqlite3
-
+from datetime import datetime
+import pytz
 class DBStorage:
     def __init__(self, db_name="data.db"):
         self.db_name = db_name
@@ -19,17 +20,25 @@ class DBStorage:
         )
 
     def insert(self, humedad, temperatura):
+        fecha = datetime.now()
         self.cursor.execute(
             "INSERT INTO mediciones (valor_humedad, valor_temperatura) VALUES (?, ?)",
-            (humedad, temperatura)
+            
+            (humedad, temperatura, fecha)
         )
         self.db.commit()
 
-    def get_measurements(self):
+    def get_measurements(self,start_date,end_date):
         self.cursor.execute("SELECT * FROM mediciones")
         labels = []
         temperatures = []
         humidities = []
+
+        gmt0 = pytz.timezone('Europe/London')
+        formated_start_date = start_date.astimezone(gmt0)
+        formated_end_date = end_date.astimezone(gmt0)
+        
+        self.cursor.execute("SELECT * FROM mediciones WHERE fecha >= ? AND fecha <= ?", (formated_start_date, formated_end_date))
 
         for row in self.cursor.fetchall():
             labels.append(row[3])

@@ -1,19 +1,17 @@
-# python 3.6
-
 import json
 import logging
 import random
 import time
+import requests  # Agregado para la integración con la API
+import json
 
 from db_storage import DBStorage
-
 from paho.mqtt import client as mqtt_client
 
 BROKER = 'g193e397.ala.us-east-1.emqxsl.com'
 PORT = 8883
 SUB_TOPIC = "monitores/#"
 TOPIC = "monitores/server"
-# generate client ID with pub prefix randomly
 CLIENT_ID = f'python-mqtt-tls-pub-sub-{random.randint(0, 1000)}'
 USERNAME = 'server'
 PASSWORD = '123'
@@ -61,34 +59,27 @@ def on_message(client, userdata, msg):
     try:
         message = msg.payload.decode()
 
-        # decode json string to python dict
         try:
             msg_dict = json.loads(message)
         except json.decoder.JSONDecodeError:
             return
 
-        # check if message is for me
         if msg_dict['to'] != "server":
             return
 
-        # check if message has "action" key
         if "action" not in msg_dict:
             return
 
         if msg_dict["action"] == "SEND_DATA":
-            # verify if message has "data" key
             if "data" not in msg_dict:
                 return
 
-            # verify if data is a dict
             if not isinstance(msg_dict["data"], dict):
                 return
 
-            # verify if data has "temperature" and "humidity" keys
             if "temperature" not in msg_dict["data"] or "humidity" not in msg_dict["data"]:
                 return
 
-            # TODO store data in database
             print("Storing data in database...")
             db = DBStorage("data.db")
             db.connect()
@@ -96,28 +87,46 @@ def on_message(client, userdata, msg):
             db.insert(msg_dict["data"]["humidity"], msg_dict["data"]["temperature"])
             print("Data stored in database owo")
             db.disconnect()
-
-
-
-        elif msg_dict["acction"] == "GET_DATA":
-            print("Getting data from database")
+        elif msg_dict["action"] == "GET_DATA":
+            print("Getting data from database...")
             db = DBStorage()
             db.connect()
             data = db.get_measurements_last_hour()
-            db.disconnect()
-            print("Data retrieved form database owo")
-            msg_dict = {"from": "server", "to": msg_dict ["from"], 
-                        "action" : "SEND_DATA" , "data" : data}
+            db.disconnect()            
+            print("Data retrieved from database owo")
+            msg_dict = {"from": "server", "to": msg_dict["from"],
+                        "action":"SEND_DATA", "data": data}
             out_msg = json.dumps(msg_dict)
-            client.publis(msg.topic,out_msg)
-
+            client.publish(msg.topic, out_msg)
+        elif msg_dict["action"] == "GET_JOKE":  # Agregado para la integración con la API
+            print("Getting a joke from the API...")
+            joke_response = get_joke()
+            print("Joke received from the API:")
+            print(joke_response)
+            # Send the joke to the client
+            joke_msg = {"from": "server", "to": msg_dict["from"], "action": "SEND_JOKE", "data": joke_response}
+            out_msg = json.dumps(joke_msg)
+            client.publish(msg.topic, out_msg)
     except Exception as e:
         print(e)
 
 
+def get_joke():
+    url = "https://jokes-by-api-ninjas.p.rapidapi.com/v1/jokes"
+
+    headers = {
+        "X-RapidAPI-Key": "6018b1656bmsh15b41732d608f39p14ff5cjsnb31812320940",
+        "X-RapidAPI-Host": "jokes-by-api-ninjas.p.rapidapi.com"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    return response.json()
+
+
 def connect_mqtt():
     client = mqtt_client.Client(CLIENT_ID)
-    client.tls_set(ca_certs='Unidad 3\mqtt_test\emqxsl-ca.crt')
+    client.tls_set(ca_certs='emqxsl-ca.crt')
     client.username_pw_set(USERNAME, PASSWORD)
     client.on_connect = on_connect
     client.on_message = on_message
@@ -136,10 +145,8 @@ def publish(client):
             time.sleep(1)
             continue
         result = client.publish(TOPIC, msg)
-        # result: [0, 1]
         status = result[0]
         if status == 0:
-            # print(f'Send `{msg}` to topic `{TOPIC}`')
             pass
         else:
             print(f'Failed to send message to topic {TOPIC}')
@@ -158,7 +165,8 @@ def run():
     else:
         client.loop_stop()
 
-run()
-print("lmao")
-while True:
-    pass
+
+if _name_ == '_main_':
+    run()
+    while True:
+        continue

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+        />
+        <title>MQTT con JS</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat&family=Poppins&display=swap');
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                background-color: #090d3d;
+                color: white;
+                font-family: 'Poppins', sans-serif;
+            }
+
+            h1 {
+                color: #333;
+            }
+
+            button {
+                background-color: #66d125;
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                cursor: pointer;
+            }
+
+            button.led_off {
+                background-color: #e74c3c;
+                border-radius: 8px;
+            }
+
+            input[type="text"] {
+                padding: 5px;
+            }
+
+            p#output_console {
+                text-align: left;
+                font-family: monospace;
+                margin: 10px;
+            }
+
+            #line-chart {
+                display: block;
+                margin: auto;
+                max-width: 80vw;
+                max-height: 80vh;
+            }
+
+            #page {
+                display: grid;
+                width: 100%;
+                grid-template-areas: 
+                    "joke joke joke"
+                    "button counter text"
+                    "graphic graphic text";
+                grid-template-rows: 100px 130px 420px;
+                grid-template-columns: auto auto auto;
+            }
+
+            #page > #joke-container {
+                grid-area: joke;
+                margin: 5px;
+                height: 80px;
+                border-radius: 15px;
+                background-color: #0b0f4c;
+                box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .title {
+                color: white;
+                text-align: center;
+                margin: 10px;
+                padding: 15px;
+            } 
+
+            #page > .button-input-group {
+                grid-area: button;
+                margin: 5px;
+                border-radius: 15px;
+                background-color: #0b0f4c;
+                box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.5);
+            }
+
+            #page > .counter {
+                grid-area: counter;
+                margin: 5px;
+                border-radius: 15px;
+                background-color: #0b0f4c;
+                box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.5);
+            }
+
+            #page > .graphic {
+                grid-area: graphic;
+                margin: 5px;
+                border-radius: 15px;
+                background-color: #0b0f4c;
+                box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.5);
+            }
+
+            #page > .text {
+                grid-area: text;
+                margin: 5px;
+                border-radius: 15px;
+                background-color: #0b0f4c;
+                box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.5);
+            }
+
+            .button-input-group {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+
+                .botones{
+                    margin: 15px;
+
+                    .led_on {
+                        border-radius: 8px;
+
+                    }
+                }
+            }
+
+            .interaccion {
+                width: 100%;
+                display: flex;
+                align-items: center;
+
+                > p {
+                    flex: 1;
+                    text-align: center;
+                }
+
+                > .led {
+                    border-radius: 100%;
+                    padding: 10px;
+                    background-color: #edf43a;
+                    margin-right: 50px;
+                }
+            }
+
+            .counter {
+                display: flex;
+                align-items: center;
+                justify-content: space-around;
+                flex-direction: row;
+
+                > .icon {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 10px;
+                    border-radius: 100%;
+                    background-color: #33b3e8;
+                    margin-bottom: auto;
+                    margin-top: 5px;
+                }
+            }
+
+            .messages {
+                width: 100%;
+                height: 550px;
+                border-radius: 10px;
+                overflow: auto;
+            }
+
+            .messages::-webkit-scrollbar {
+                width: 12px; /* Ancho de la barra de desplazamiento vertical */
+            }
+
+            .messages::-webkit-scrollbar-thumb {
+                background-color: #ccc; /* Color del pulgar (barra de desplazamiento) */
+            }
+
+            .messages::-webkit-scrollbar-track {
+                background-color: #555; /* Color de la pista (fondo de la barra de desplazamiento) */
+            }
+
+            ion-icon {
+                font-size: 24px;
+                color: black;
+            }
+
+            .status {
+                display: flex;
+                align-items: center;
+                justify-content: space-around;
+
+                > .rounded {
+                    border-radius: 100%;
+                    padding: 10px;
+                    background-color: #ea4552;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1 class="title">MQTT CON JS</h1>
+        <div class="container-principal" id="page">
+            <!-- Agregar un nuevo elemento para mostrar el chiste -->
+            <div id="joke-container">
+                <p id="joke-text">Esperando un chiste...</p>
+            </div>
+            
+            <div class="button-input-group">
+                <div class="interaccion">
+                    <p>Gestión de LED y Datos</p>
+                    <ion-icon name="information-outline" class="led"></ion-icon>
+                </div>
+                <div class="botones">
+                    <button
+                    id="toggle"
+                    class="led_on"
+                    >
+                        Apagar led
+                    </button>
+                    <button
+                        id="fetch_data"
+                        class="led_on"
+                    >
+                        Solicitar datos históricos
+                    </button>
+                    <input
+                    type="text"
+                    id="msgMQTT"
+                    />
+                </div>
+            </div>
+
+            <div class="counter">
+                <div class="texto-contador">
+                    <p>COUNTER</p>
+                    <p id="counter_display">Esperando...</p>
+                </div>
+                <div class="icon">
+                    <ion-icon name="timer-outline" class="icono"></ion-icon>
+                </div>
+            </div>
+
+            <div class="graphic">
+                <canvas
+                id="line-chart"
+                width="700"
+                height="400"
+            ></canvas>
+            </div>
+
+            <div class="text">
+                <div class="status">
+                    <h3>Status</h3>
+                    <ion-icon name="cloud-upload-outline" class="rounded"></ion-icon>
+                </div>
+                <div class="messages">
+                    <p id="output_console"></p>
+                </div>
+            </div>
+        </div>
+        <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+        <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    </body>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+
+
+    <script>
+        let chart = new Chart(document.getElementById("line-chart"), {
+            type: "line",
+            data: {
+                labels: [1500, 1600, 1700, 1750, 1800, 1850, 1900, 1950, 1999, 2050],
+                datasets: [
+                    {
+                        data: [86, 114, 106, 106, 107, 111, 133, 221, 783, 2478],
+                        label: "Temperatura",
+                        borderColor: "#3e95cd",
+                        fill: false,
+                    },
+                    {
+                        data: [282, 350, 411, 502, 635, 809, 947, 1402, 3700, 5267],
+                        label: "Humedad",
+                        borderColor: "#8e5ea2",
+                        fill: false,
+                    },
+                ],
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: "World population per region (in millions)",
+                },
+            },
+        });
+
+        function updateChart(labels, temperatures, humidities) {
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = temperatures;
+            chart.data.datasets[1].data = humidities;
+            chart.update();
+        }
+        function onMessageArrived(message) {
+            console.log("Mensaje recibido: " + message.payloadString);
+            try {
+                const msgObj = JSON.parse(message.payloadString);
+
+                // Verificar si es un mensaje de chiste
+                if (msgObj.action === 'SEND_JOKE' && msgObj.data) {
+                    const jokeText = msgObj.data.joke || '¡Error al obtener el chiste!';
+                    // Mostrar el chiste en el contenedor
+                    document.getElementById('joke-text').innerText = jokeText;
+                }
+
+                // Resto de tu lógica para otros tipos de mensajes...
+
+            } catch (error) {
+                console.error("Error al procesar el mensaje: " + error.message);
+            }
+        }
+    </script>
+    <script src="mqtt.js"></script>
+    <script>
+        let PUB_TOPIC = "monitores/web_BACANO";
+        let msgMQTT = document.getElementById("msgMQTT");
+        let output_console = document.getElementById("output_console");
+        msgMQTT.addEventListener("keyup", (e) => {
+            if (e.keyCode === 13) {
+                console.log("Sending:", msgMQTT.value);
+                client.publish(PUB_TOPIC, msgMQTT.value);
+                msgMQTT.value = "";
+            }
+        });
+
+        let toggle = document.getElementById("toggle");
+        toggle.addEventListener("click", (e) => {
+            if (toggle.className == "led_on") {
+                toggle.className = "led_off";
+                toggle.innerHTML = "Encender led";
+                client.publish(PUB_TOPIC, JSON.stringify({ led: 0 }));
+            } else {
+                toggle.className = "led_on";
+                toggle.innerHTML = "Apagar led";
+                client.publish(PUB_TOPIC, JSON.stringify({ led: 1 }));
+            }
+        });
+
+        document.getElementById("fetch_data").addEventListener("click", (e) => {
+            client.publish(
+                PUB_TOPIC,
+                JSON.stringify({
+                    from: "WEB",
+                    to: "server",
+                    action: "GET_DATA",
+                })
+            );
+        });
+
+        /*
+         * Browser
+         * This document explains how to use MQTT over WebSocket with the ws and wss protocols.
+         * EMQX's default port for ws connection is 8083 and for wss connection is 8084.
+         * Note that you need to add a path after the connection address, such as /mqtt.
+         */
+        const url = "wss://g193e397.ala.us-east-1.emqxsl.com:8084/mqtt";
+
+        // Create an MQTT client instance
+        const options = {
+            // Clean session
+            clean: true,
+            connectTimeout: 4000,
+            // Authentication
+            clientId: "emqxjs_" + Math.random().toString(16).substr(2, 8),
+            username: "mqtt",
+            password: "123",
+        };
+
+        const client = mqtt.connect(url, options);
+
+        client.on("connect", function () {
+            console.log("Connected");
+            // Subscribe to a topic
+            client.subscribe(PUB_TOPIC, function (err) {
+                if (!err) {
+                    // Publish a message to a topic
+                    console.log("Message is published");
+                    client.publish(PUB_TOPIC, JSON.stringify({from:"WEB",to:"server",action:"GET_JOKE"}));
+                }
+            });
+        });
+
+        // Receive messages
+        client.on("message", function (topic, message) {
+            // message is Buffer
+            output_console.innerHTML = message.toString() + "<br>" + output_console.innerHTML;
+            try {
+                let data = JSON.parse(message.toString());
+                if (data["from"] == "server" && data["to"] == "WEB" && data["action"] == "SEND_DATA") {
+                    updateChart(data["data"]["labels"], data["data"]["temperatures"], data["data"]["humidities"]);
+                }else if(data["from"] == "ESP32" && data["to"] == "broadcast" && data["action"] == "UPDATE_COUNTER") {
+                    document.getElementById("counter_display").innerHTML = data["value"];
+                }
+                if (data["from"] == "server" && data["to"] == "WEB" && data["action"] == "SEND_JOKE") {
+                    const jokeText = data["data"][0]["joke"] || '¡Error al obtener el chiste!';
+                    // Mostrar el chiste en el contenedor
+                    document.getElementById('joke-text').innerText = jokeText;
+                }
+            } catch (e) {
+                console.log("No es un JSON");
+            }
+        });
+    </script>
+</html>
